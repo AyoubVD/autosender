@@ -1,9 +1,10 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import os
 from . import models, schemas
+import requests
 
 app = FastAPI()
 
@@ -64,3 +65,21 @@ def delete_recipient(recipient_id: int, db: Session = Depends(get_db)):
     db.delete(db_recipient)
     db.commit()
     return None 
+
+def send_whatsapp_message(to: str, message: str):
+    url = "http://localhost:3001/send"
+    payload = {"to": to, "message": message}
+    response = requests.post(url, json=payload)
+    if response.status_code != 200:
+        raise Exception("Failed to send WhatsApp message")
+
+@app.post("/send_whatsapp/")
+def send_whatsapp(
+    to: str = Body(..., embed=True),
+    message: str = Body(..., embed=True)
+):
+    try:
+        send_whatsapp_message(to, message)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) 
